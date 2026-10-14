@@ -120,7 +120,31 @@
             background: #475569;
             border-radius: 3px;
         }
+
+        /* Embed mode (inside an X player card or any iframe): render at a fixed
+           portrait size and scale it uniformly to fit whatever box we're given. */
+        html.embed, html.embed body { overflow: hidden; }
+        html.embed #game-wrapper {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 450px;
+            height: 800px;
+            max-width: none;
+            max-height: none;
+            transform-origin: center center;
+        }
     </style>
+    <script>
+        // ?embed=1 forces embed mode for testing outside a frame
+        try {
+            if (/(^|[?&])embed=1(&|$)/.test(location.search) || window.self !== window.top) {
+                document.documentElement.classList.add('embed');
+            }
+        } catch (e) {
+            document.documentElement.classList.add('embed');
+        }
+    </script>
 </head>
 <body>
 
@@ -2348,9 +2372,20 @@ window.onload = function () {
     state.towers = createInitialTowers();
     setupDecks();
     renderHandUI();
-    resizeCanvas();
+    fitToFrame();
     requestAnimationFrame(gameLoop);
 };
+
+function fitToFrame() {
+    if (document.documentElement.classList.contains('embed')) {
+        const scale = Math.min(window.innerWidth / 450, window.innerHeight / 800);
+        document.getElementById('game-wrapper').style.transform =
+            `translate(-50%, -50%) scale(${scale})`;
+    }
+    resizeCanvas();
+}
+
+window.addEventListener('resize', fitToFrame);
 </script>
 </body>
 </html>
