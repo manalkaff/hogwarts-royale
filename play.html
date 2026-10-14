@@ -1,0 +1,2356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hogwarts Royale - Wizarding Arena Battle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --gold: #f59e0b;
+            --gold-light: #fcd34d;
+            --magic-purple: #a855f7;
+            --magic-pink: #ec4899;
+            --gryffindor: #991b1b;
+            --slytherin: #065f46;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #090a0f 100%);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #f8fafc;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .font-wizard {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Magical Card Styling */
+        .wizard-card {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: linear-gradient(145deg, #2e2640 0%, #1a1625 100%);
+            border: 2px solid #524364;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wizard-card.ready:hover {
+            transform: translateY(-6px);
+            border-color: #cbd5e1;
+        }
+
+        .wizard-card.selected {
+            transform: translateY(-12px) scale(1.06);
+            border-color: #fcd34d;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.65), inset 0 0 10px rgba(251, 191, 36, 0.3);
+            z-index: 20;
+        }
+
+        .wizard-card.disabled {
+            filter: grayscale(0.85) brightness(0.6);
+            cursor: not-allowed;
+        }
+
+        /* Elixir Drop Badge */
+        .elixir-badge {
+            background: linear-gradient(135deg, #d946ef 0%, #7e22ce 100%);
+            border: 1.5px solid #f5d0fe;
+            box-shadow: 0 2px 6px rgba(126, 34, 206, 0.8);
+        }
+
+        /* Elixir Pip Segments */
+        .elixir-segment {
+            border-right: 1px solid rgba(15, 23, 42, 0.6);
+        }
+        .elixir-segment:last-child {
+            border-right: none;
+        }
+
+        /* Golden Shimmer Text */
+        .text-gold-glow {
+            color: #fde68a;
+            text-shadow: 0 2px 10px rgba(245, 158, 11, 0.6);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.8)); }
+            50% { filter: drop-shadow(0 0 14px rgba(168, 85, 247, 1)); }
+        }
+
+        .elixir-pulse {
+            animation: pulseGlow 2s infinite;
+        }
+
+        @keyframes floatBanner {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .floating {
+            animation: floatBanner 3s ease-in-out infinite;
+        }
+
+        /* Custom Scrollbar for Encyclopedia Modal */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper" class="relative w-full h-full max-w-[500px] max-h-[960px] flex flex-col bg-slate-950 shadow-2xl border-x border-slate-800/80 overflow-hidden">
+
+    <!-- TOP HUD BAR: Opponent Info, Crowns, Timer, Controls -->
+    <header class="h-14 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-900/80 border-b border-amber-500/30 px-3 flex items-center justify-between z-20 shrink-0">
+        <!-- Left: AI Opponent & Crowns -->
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-lg bg-red-950 border border-red-500/60 flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-skull text-red-400 text-lg"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold tracking-wider uppercase text-red-300 font-wizard">Dark Lord AI</span>
+                    <span id="difficulty-badge" class="text-[10px] px-1.5 py-0.2 bg-red-900/70 text-red-200 rounded border border-red-700/50 font-semibold">Auror</span>
+                </div>
+                <!-- Crown Counter -->
+                <div class="flex items-center gap-3 mt-0.5 text-xs">
+                    <div class="flex items-center gap-1 text-red-400 font-bold" title="Enemy Crowns">
+                        <i class="fa-solid fa-crown text-amber-400"></i>
+                        <span id="enemy-crowns">0</span>
+                    </div>
+                    <span class="text-slate-600 font-bold">vs</span>
+                    <div class="flex items-center gap-1 text-sky-400 font-bold" title="Your Crowns">
+                        <i class="fa-solid fa-crown text-amber-400"></i>
+                        <span id="player-crowns">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Match Timer & Elixir Speed Status -->
+        <div class="flex flex-col items-center">
+            <div id="double-elixir-pill" class="hidden text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-fuchsia-600/90 text-white border border-fuchsia-300 shadow-lg animate-bounce">
+                2x Magic Surge!
+            </div>
+            <div class="bg-slate-950/90 border border-amber-500/40 rounded-lg px-3 py-1 flex items-center gap-1.5 shadow-inner">
+                <i class="fa-regular fa-clock text-amber-400 text-xs"></i>
+                <span id="timer-display" class="font-wizard font-bold text-sm tracking-wider text-amber-100">02:30</span>
+            </div>
+        </div>
+
+        <!-- Right: Utility Buttons -->
+        <div class="flex items-center gap-1.5">
+            <button id="btn-deck-info" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 flex items-center justify-center transition" title="Spellbook & Units Guide">
+                <i class="fa-solid fa-book-sparkles text-sm"></i>
+            </button>
+            <button id="btn-sound" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 flex items-center justify-center transition" title="Toggle Sound">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
+            </button>
+            <button id="btn-restart-top" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 flex items-center justify-center transition" title="Restart Match">
+                <i class="fa-solid fa-rotate-right text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- BATTLEFIELD CANVAS CONTAINER -->
+    <main id="arena-container" class="relative flex-1 w-full bg-emerald-950 overflow-hidden cursor-crosshair">
+        <canvas id="battle-canvas" class="block w-full h-full"></canvas>
+
+        <!-- Dynamic Center Announcement Banner (2x Elixir, Tower Down, Overtime) -->
+        <div id="arena-banner" class="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center items-center opacity-0 transition-all duration-300 transform scale-90 z-30">
+            <div class="bg-slate-950/90 border-2 border-amber-400 px-6 py-2.5 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.6)] text-center">
+                <div id="arena-banner-sub" class="text-[10px] font-bold uppercase tracking-widest text-fuchsia-400">Hogwarts Grounds</div>
+                <div id="arena-banner-text" class="font-wizard text-xl font-black text-amber-200 tracking-wide">BATTLE COMMENCES!</div>
+            </div>
+        </div>
+
+        <!-- Selected Card Cancel / Instruction Pill -->
+        <div id="deploy-hint" class="hidden pointer-events-none absolute top-3 inset-x-0 flex justify-center z-20">
+            <div class="bg-slate-900/90 border border-amber-400/70 text-amber-100 text-xs font-semibold px-3.5 py-1 rounded-full shadow-lg flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span id="deploy-hint-text">Tap your half of the grounds to summon!</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- BOTTOM DECK & ELIXIR DASHBOARD -->
+    <footer class="bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/40 px-2.5 pt-2 pb-2.5 z-20 shrink-0 select-none">
+        
+        <!-- Elixir Bar Row -->
+        <div class="flex items-center gap-2 mb-2 px-1">
+            <!-- Elixir Potion Icon + Number -->
+            <div class="relative flex items-center justify-center w-8 h-8 rounded-full elixir-badge elixir-pulse shrink-0">
+                <span id="elixir-count" class="font-wizard font-black text-base text-white drop-shadow">5</span>
+            </div>
+
+            <!-- 10-Segment Bar -->
+            <div class="relative flex-1 h-5 bg-slate-950 rounded-full p-0.5 border border-purple-500/50 shadow-inner overflow-hidden">
+                <!-- Continuous Fill Bar -->
+                <div id="elixir-fill" class="h-full rounded-full bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-400 transition-all duration-75" style="width: 50%;"></div>
+                
+                <!-- 10 Segment Dividers -->
+                <div class="absolute inset-0 grid grid-cols-10 pointer-events-none">
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                    <div class="elixir-segment"></div>
+                </div>
+            </div>
+
+            <div class="text-[11px] font-bold text-purple-300 w-12 text-right font-mono" id="elixir-rate-label">1.0x</div>
+        </div>
+
+        <!-- 4 Active Hand Cards + Next Card Preview -->
+        <div class="flex items-stretch gap-2 h-28">
+            <!-- 4-Card Hand Grid -->
+            <div id="hand-container" class="flex-1 grid grid-cols-4 gap-2">
+                <!-- Populated dynamically via JS -->
+            </div>
+
+            <!-- Next Card Slot -->
+            <div class="w-16 flex flex-col items-center justify-between bg-slate-950/90 border border-slate-700/80 rounded-xl p-1.5 shrink-0">
+                <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Next</span>
+                <div id="next-card-slot" class="w-full flex-1 flex flex-col items-center justify-center rounded-lg bg-slate-900 border border-slate-700/60 relative overflow-hidden p-1">
+                    <!-- Populated via JS -->
+                </div>
+                <span class="text-[9px] text-amber-400/80 font-semibold truncate w-full text-center" id="next-card-name">---</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- START / TITLE MODAL -->
+    <div id="start-modal" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex flex-col justify-between p-6 overflow-y-auto">
+        <div class="text-center mt-4">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-3">
+                <i class="fa-solid fa-wand-sparkles"></i> WIZARDING DUEL ARENA
+            </div>
+            <h1 class="font-wizard text-4xl font-black tracking-wider text-gold-glow mb-1">HOGWARTS ROYALE</h1>
+            <p class="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
+                Command the Order of the Phoenix and magical creatures across the two bridges of Hogwarts Grounds. Destroy the Dark Lord's Headmaster Tower!
+            </p>
+        </div>
+
+        <!-- Featured Cards Preview Strip -->
+        <div class="my-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl">
+            <div class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2.5 flex items-center justify-between">
+                <span><i class="fa-solid fa-layer-group mr-1.5"></i> Your 8-Card Magical Deck</span>
+                <span class="text-[10px] text-slate-400">Tap any card in battle</span>
+            </div>
+            <div id="deck-preview-grid" class="grid grid-cols-4 gap-2">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+
+        <!-- AI Difficulty Selection -->
+        <div class="space-y-3 mb-2">
+            <label class="block text-center text-xs font-bold uppercase tracking-wider text-slate-400">Select Opponent Mastery</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button data-diff="easy" class="diff-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-900 text-xs font-bold text-slate-300 hover:border-amber-500/50 transition">
+                    1st Year<br><span class="text-[10px] font-normal text-slate-400">Relaxed AI</span>
+                </button>
+                <button data-diff="normal" class="diff-btn py-2 px-3 rounded-xl border-2 border-amber-400 bg-amber-500/20 text-xs font-bold text-amber-200 shadow-lg transition">
+                    Auror<br><span class="text-[10px] font-normal text-amber-300/80">Balanced AI</span>
+                </button>
+                <button data-diff="hard" class="diff-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-900 text-xs font-bold text-slate-300 hover:border-amber-500/50 transition">
+                    Dark Lord<br><span class="text-[10px] font-normal text-slate-400">Aggressive AI</span>
+                </button>
+            </div>
+
+            <button id="btn-start-match" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-wizard font-black text-lg tracking-wider shadow-[0_0_25px_rgba(245,158,11,0.5)] active:scale-98 transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-bolt"></i> ENTER THE ARENA
+            </button>
+        </div>
+    </div>
+
+    <!-- SPELLBOOK / GUIDE MODAL -->
+    <div id="guide-modal" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex flex-col p-5">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <h2 class="font-wizard text-xl font-bold text-amber-300 flex items-center gap-2">
+                <i class="fa-solid fa-book-journal-whills"></i> Hogwarts Field Guide
+            </h2>
+            <button id="btn-close-guide" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="guide-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            <!-- Populated by JS -->
+        </div>
+        <button id="btn-resume-guide" class="mt-3 w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm">
+            Back to Duel
+        </button>
+    </div>
+
+    <!-- GAME OVER / VICTORY MODAL -->
+    <div id="gameover-modal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div id="result-badge" class="w-20 h-20 rounded-full flex items-center justify-center mb-3 border-4 shadow-2xl">
+            <i id="result-icon" class="fa-solid fa-trophy text-4xl"></i>
+        </div>
+        <h2 id="result-title" class="font-wizard text-3xl font-black tracking-wider mb-1">VICTORY!</h2>
+        <p id="result-subtitle" class="text-xs text-slate-300 mb-6">Hogwarts stands victorious against the Dark Arts!</p>
+
+        <!-- Crowns Display Box -->
+        <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 mb-6 shadow-xl">
+            <div class="grid grid-cols-3 items-center">
+                <!-- Player Crowns -->
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-sky-400 mb-1">Order (You)</span>
+                    <div id="final-player-crowns" class="flex gap-1 text-xl text-amber-400 my-1"></div>
+                    <span id="final-player-score" class="text-2xl font-wizard font-black text-white">3</span>
+                </div>
+
+                <div class="text-xs font-bold uppercase tracking-widest text-slate-500">CROWNS</div>
+
+                <!-- Enemy Crowns -->
+                <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-1">Death Eaters</span>
+                    <div id="final-enemy-crowns" class="flex gap-1 text-xl text-amber-400 my-1"></div>
+                    <span id="final-enemy-score" class="text-2xl font-wizard font-black text-white">0</span>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs text-slate-400">
+                <span>Match Duration: <strong id="final-time" class="text-slate-200">01:42</strong></span>
+                <span>Cards Cast: <strong id="final-cards-cast" class="text-amber-300">18</strong></span>
+            </div>
+        </div>
+
+        <button id="btn-play-again" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-wizard font-black text-lg tracking-wider shadow-[0_0_25px_rgba(245,158,11,0.5)] hover:brightness-110 transition">
+            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> REMATCH AT HOGWARTS
+        </button>
+    </div>
+
+</div>
+
+<script>
+/**
+ * HOGWARTS ROYALE - COMPLETE SINGLE-FILE ENGINE
+ * Features:
+ * - Procedural Web Audio API sound effects (wands, thunder, explosions, fanfares)
+ * - Logical coordinate system (500 x 800) with crisp HiDPI scaling
+ * - 8 iconic Harry Potter cards (Harry, Hermione, Ron, Hagrid, Dementors, Hippogriff, Mountain Troll, Expelliarmus/Stupefy)
+ * - Two-lane river & bridge pathfinding + flying units + direct damage/stun spells
+ */
+
+class SoundFX {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+    }
+
+    playWandZap(freq = 620) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, now);
+            osc.frequency.exponentialRampToValueAtTime(140, now + 0.16);
+
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.17);
+        } catch (e) {}
+    }
+
+    playSummon(isHeavy = false) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = isHeavy ? 'triangle' : 'sine';
+            const base = isHeavy ? 140 : 320;
+            osc.frequency.setValueAtTime(base, now);
+            osc.frequency.exponentialRampToValueAtTime(base * 1.8, now + 0.22);
+
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.25);
+        } catch (e) {}
+    }
+
+    playSpellBlast() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            // Dual oscillator chord blast
+            [220, 330, 580].forEach((f, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = idx === 2 ? 'sawtooth' : 'triangle';
+                osc.frequency.setValueAtTime(f, now);
+                osc.frequency.exponentialRampToValueAtTime(65, now + 0.42);
+
+                gain.gain.setValueAtTime(0.09, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.43);
+            });
+        } catch (e) {}
+    }
+
+    playTowerDestroy() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const notes = [261.6, 329.6, 392.0, 523.2];
+            notes.forEach((n, i) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(n, now + i * 0.08);
+                gain.gain.setValueAtTime(0.14, now + i * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.36);
+            });
+        } catch (e) {}
+    }
+
+    playHeavyHit() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(110, now);
+            osc.frequency.exponentialRampToValueAtTime(38, now + 0.18);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.19);
+        } catch (e) {}
+    }
+}
+
+const sfx = new SoundFX();
+
+const CARD_DATABASE = [
+    {
+        id: 'harry',
+        name: 'Harry Potter',
+        subtitle: 'The Chosen One',
+        cost: 4,
+        type: 'unit',
+        hp: 680,
+        damage: 135,
+        range: 145,
+        attackSpeed: 1.05,
+        speed: 58,
+        splash: 0,
+        count: 1,
+        flying: false,
+        targetType: 'all', // attacks ground + air + buildings
+        canHitAir: true,
+        radius: 15,
+        color: '#dc2626',
+        accent: '#fbbf24',
+        projectileColor: '#ef4444',
+        quote: 'Fires fast Disarming blasts at ground & air foes.',
+        icon: '⚡'
+    },
+    {
+        id: 'hermione',
+        name: 'Hermione',
+        subtitle: 'Brightest Witch',
+        cost: 3,
+        type: 'unit',
+        hp: 460,
+        damage: 98,
+        range: 165,
+        attackSpeed: 1.25,
+        speed: 54,
+        splash: 52, // Area bombarda splash
+        count: 1,
+        flying: false,
+        targetType: 'all',
+        canHitAir: true,
+        radius: 14,
+        color: '#9333ea',
+        accent: '#f472b6',
+        projectileColor: '#c084fc',
+        quote: 'Casts Bombarda area-splash spells from afar.',
+        icon: '✨'
+    },
+    {
+        id: 'ron',
+        name: 'Ron Weasley',
+        subtitle: 'Wizard Chess Knight',
+        cost: 3,
+        type: 'unit',
+        hp: 890,
+        damage: 118,
+        range: 34, // Melee
+        attackSpeed: 1.1,
+        speed: 62,
+        splash: 0,
+        count: 1,
+        flying: false,
+        targetType: 'ground',
+        canHitAir: false,
+        radius: 16,
+        color: '#ea580c',
+        accent: '#fde047',
+        projectileColor: null,
+        quote: 'Brave melee knight who charges into close combat.',
+        icon: '♞'
+    },
+    {
+        id: 'hagrid',
+        name: 'Rubeus Hagrid',
+        subtitle: 'Keeper of Keys',
+        cost: 5,
+        type: 'unit',
+        hp: 2450,
+        damage: 210,
+        range: 42,
+        attackSpeed: 1.5,
+        speed: 36,
+        splash: 0,
+        count: 1,
+        flying: false,
+        targetType: 'buildings', // Pure Siege Tank!
+        canHitAir: false,
+        radius: 22,
+        color: '#78350f',
+        accent: '#ec4899',
+        projectileColor: null,
+        quote: 'Half-giant tank! Marches straight for enemy Towers.',
+        icon: '☂️'
+    },
+    {
+        id: 'dementors',
+        name: 'Dementor Swarm',
+        subtitle: 'Azkaban Wraiths',
+        cost: 3,
+        type: 'unit',
+        hp: 210,
+        damage: 68,
+        range: 48,
+        attackSpeed: 0.95,
+        speed: 74,
+        splash: 0,
+        count: 3, // Spawns 3 flying wraiths
+        flying: true,
+        targetType: 'all',
+        canHitAir: true,
+        radius: 13,
+        color: '#1e293b',
+        accent: '#38bdf8',
+        projectileColor: null,
+        quote: 'Trio of flying wraiths that glide right over the river!',
+        icon: '👻'
+    },
+    {
+        id: 'hippogriff',
+        name: 'Buckbeak',
+        subtitle: 'Proud Hippogriff',
+        cost: 4,
+        type: 'unit',
+        hp: 820,
+        damage: 155,
+        range: 44,
+        attackSpeed: 1.15,
+        speed: 82, // Very fast flying unit
+        splash: 0,
+        count: 1,
+        flying: true,
+        targetType: 'all',
+        canHitAir: true,
+        radius: 17,
+        color: '#64748b',
+        accent: '#f8fafc',
+        projectileColor: null,
+        quote: 'Swift flying beast that dives across the Black Lake.',
+        icon: '🦅'
+    },
+    {
+        id: 'troll',
+        name: 'Mountain Troll',
+        subtitle: 'Dungeon Crusher',
+        cost: 5,
+        type: 'unit',
+        hp: 1850,
+        damage: 195,
+        range: 44,
+        attackSpeed: 1.75,
+        speed: 40,
+        splash: 58, // Ground club slam splash
+        count: 1,
+        flying: false,
+        targetType: 'ground',
+        canHitAir: false,
+        radius: 21,
+        color: '#4d7c0f',
+        accent: '#a3e635',
+        projectileColor: null,
+        quote: 'Smashes ground swarms with a massive wooden club.',
+        icon: '🪨'
+    },
+    {
+        id: 'expelliarmus',
+        name: 'Expelliarmus!',
+        subtitle: 'Stupefy Scarlet Blast',
+        cost: 3,
+        type: 'spell',
+        damage: 285,
+        crownTowerDamage: 115,
+        radius: 92,
+        stunDuration: 1.6, // Stuns and pushes back enemies
+        color: '#ef4444',
+        accent: '#fca5a5',
+        quote: 'Instant scarlet shockwave anywhere! Damages & stuns foes for 1.6s.',
+        icon: '💥'
+    }
+];
+
+const ARENA = {
+    width: 500,
+    height: 800,
+    riverY: 400,
+    riverHeight: 54,
+    leftLaneX: 130,
+    rightLaneX: 370,
+    bridgeWidth: 68
+};
+
+// Initial Tower Templates
+function createInitialTowers() {
+    return [
+        // Enemy Towers (Top - Slytherin/Death Eater Crimson)
+        {
+            id: 'enemy_king',
+            team: 'enemy',
+            isKing: true,
+            name: 'Dark Headmaster',
+            x: 250,
+            y: 78,
+            radius: 34,
+            hp: 3400,
+            maxHp: 3400,
+            damage: 115,
+            range: 175,
+            attackSpeed: 1.0,
+            cooldown: 0,
+            awake: false, // Wakes up when damaged or a house tower falls
+            destroyed: false
+        },
+        {
+            id: 'enemy_left',
+            team: 'enemy',
+            isKing: false,
+            lane: 'left',
+            name: 'Slytherin West',
+            x: ARENA.leftLaneX,
+            y: 165,
+            radius: 26,
+            hp: 1900,
+            maxHp: 1900,
+            damage: 90,
+            range: 165,
+            attackSpeed: 0.85,
+            cooldown: 0,
+            awake: true,
+            destroyed: false
+        },
+        {
+            id: 'enemy_right',
+            team: 'enemy',
+            isKing: false,
+            lane: 'right',
+            name: 'Slytherin East',
+            x: ARENA.rightLaneX,
+            y: 165,
+            radius: 26,
+            hp: 1900,
+            maxHp: 1900,
+            damage: 90,
+            range: 165,
+            attackSpeed: 0.85,
+            cooldown: 0,
+            awake: true,
+            destroyed: false
+        },
+        // Player Towers (Bottom - Gryffindor/Order Gold & Azure)
+        {
+            id: 'player_king',
+            team: 'player',
+            isKing: true,
+            name: 'Dumbledore Tower',
+            x: 250,
+            y: 722,
+            radius: 34,
+            hp: 3400,
+            maxHp: 3400,
+            damage: 115,
+            range: 175,
+            attackSpeed: 1.0,
+            cooldown: 0,
+            awake: false,
+            destroyed: false
+        },
+        {
+            id: 'player_left',
+            team: 'player',
+            isKing: false,
+            lane: 'left',
+            name: 'Gryffindor West',
+            x: ARENA.leftLaneX,
+            y: 635,
+            radius: 26,
+            hp: 1900,
+            maxHp: 1900,
+            damage: 90,
+            range: 165,
+            attackSpeed: 0.85,
+            cooldown: 0,
+            awake: true,
+            destroyed: false
+        },
+        {
+            id: 'player_right',
+            team: 'player',
+            isKing: false,
+            lane: 'right',
+            name: 'Gryffindor East',
+            x: ARENA.rightLaneX,
+            y: 635,
+            radius: 26,
+            hp: 1900,
+            maxHp: 1900,
+            damage: 90,
+            range: 165,
+            attackSpeed: 0.85,
+            cooldown: 0,
+            awake: true,
+            destroyed: false
+        }
+    ];
+}
+
+const state = {
+    running: false,
+    paused: false,
+    difficulty: 'normal', // easy, normal, hard
+    matchDuration: 150,   // 2:30 standard duel
+    timeRemaining: 150,
+    overtime: false,
+    doubleElixir: false,
+
+    playerElixir: 5,
+    enemyElixir: 5,
+    maxElixir: 10,
+    baseElixirRate: 0.52, // Elixir per second
+
+    playerDeckQueue: [],
+    playerHand: [],
+    selectedHandIndex: null,
+    cardsCastCount: 0,
+
+    enemyHand: [],
+    enemyDeckQueue: [],
+    aiThinkTimer: 1.5,
+
+    towers: [],
+    units: [],
+    projectiles: [],
+    effects: [],
+    floatingTexts: [],
+
+    pointer: {
+        x: 250,
+        y: 550,
+        active: false
+    },
+
+    ambientParticles: []
+};
+
+// Initialize floating ambient fireflies on the grounds
+for (let i = 0; i < 24; i++) {
+    state.ambientParticles.push({
+        x: Math.random() * ARENA.width,
+        y: Math.random() * ARENA.height,
+        r: 1 + Math.random() * 2,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12,
+        alpha: 0.2 + Math.random() * 0.6
+    });
+}
+
+function shuffleArray(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function setupDecks() {
+    const allIds = CARD_DATABASE.map(c => c.id);
+    const pShuffled = shuffleArray(allIds);
+    state.playerHand = pShuffled.slice(0, 4);
+    state.playerDeckQueue = pShuffled.slice(4);
+
+    const eShuffled = shuffleArray(allIds);
+    state.enemyHand = eShuffled.slice(0, 4);
+    state.enemyDeckQueue = eShuffled.slice(4);
+}
+
+function getCardById(id) {
+    return CARD_DATABASE.find(c => c.id === id);
+}
+
+function getCardBadgeSVG(card) {
+    switch (card.id) {
+        case 'harry':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <circle cx="32" cy="34" r="18" fill="#fde68a" stroke="#78350f" stroke-width="2"/>
+                <path d="M14 30 C14 14, 50 14, 50 30 C44 22, 20 22, 14 30 Z" fill="#1e293b"/>
+                <circle cx="25" cy="34" r="5.5" fill="none" stroke="#0f172a" stroke-width="2.5"/>
+                <circle cx="39" cy="34" r="5.5" fill="none" stroke="#0f172a" stroke-width="2.5"/>
+                <line x1="30.5" y1="34" x2="33.5" y2="34" stroke="#0f172a" stroke-width="2.5"/>
+                <path d="M31 20 L28 26 L33 26 L30 31" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M18 48 Q32 55 46 48" stroke="#991b1b" stroke-width="6" fill="none" stroke-linecap="round"/>
+            </svg>`;
+        case 'hermione':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <path d="M12 46 Q10 16 32 14 Q54 16 52 46" fill="#78350f"/>
+                <circle cx="32" cy="34" r="15" fill="#fde68a"/>
+                <circle cx="26" cy="33" r="2.2" fill="#1e293b"/>
+                <circle cx="38" cy="33" r="2.2" fill="#1e293b"/>
+                <path d="M46 44 L56 24" stroke="#a16207" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="56" cy="24" r="5" fill="#e879f9"/>
+            </svg>`;
+        case 'ron':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <circle cx="32" cy="35" r="17" fill="#fed7aa"/>
+                <path d="M14 32 C15 14, 49 14, 50 32 C42 23, 22 23, 14 32 Z" fill="#ea580c"/>
+                <circle cx="26" cy="35" r="2.2" fill="#1e293b"/>
+                <circle cx="38" cy="35" r="2.2" fill="#1e293b"/>
+                <path d="M48 18 L52 48" stroke="#cbd5e1" stroke-width="3.5" stroke-linecap="round"/>
+                <line x1="44" y1="26" x2="54" y2="26" stroke="#fbbf24" stroke-width="3"/>
+            </svg>`;
+        case 'hagrid':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <circle cx="32" cy="32" r="22" fill="#451a03"/>
+                <circle cx="32" cy="28" r="13" fill="#fdba74"/>
+                <path d="M15 32 Q32 54 49 32 Z" fill="#292524"/>
+                <circle cx="27" cy="25" r="2.2" fill="#0f172a"/>
+                <circle cx="37" cy="25" r="2.2" fill="#0f172a"/>
+                <path d="M48 44 L56 20" stroke="#ec4899" stroke-width="4" stroke-linecap="round"/>
+            </svg>`;
+        case 'dementors':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <path d="M16 52 Q20 14 32 12 Q44 14 48 52 L40 46 L32 54 L24 46 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                <ellipse cx="32" cy="27" rx="7" ry="9" fill="#020617"/>
+                <circle cx="32" cy="27" r="3" fill="#38bdf8" opacity="0.8"/>
+            </svg>`;
+        case 'hippogriff':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <path d="M10 38 Q4 16 26 24 L32 16 L38 24 Q60 16 54 38 L32 46 Z" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>
+                <polygon points="32,26 27,36 37,36" fill="#f59e0b"/>
+                <circle cx="27" cy="25" r="2.2" fill="#ea580c"/>
+                <circle cx="37" cy="25" r="2.2" fill="#ea580c"/>
+            </svg>`;
+        case 'troll':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <circle cx="30" cy="34" r="18" fill="#65a30d" stroke="#365314" stroke-width="2.5"/>
+                <circle cx="24" cy="30" r="2.5" fill="#fef08a"/>
+                <circle cx="36" cy="30" r="2.5" fill="#fef08a"/>
+                <path d="M22 41 Q30 37 38 41" stroke="#1a2e05" stroke-width="3" fill="none"/>
+                <rect x="46" y="16" width="8" height="32" rx="4" fill="#78350f" stroke="#451a03" stroke-width="2"/>
+            </svg>`;
+        case 'expelliarmus':
+            return `<svg viewBox="0 0 64 64" class="w-11 h-11 mx-auto drop-shadow">
+                <circle cx="32" cy="32" r="22" fill="#991b1b" stroke="#fca5a5" stroke-width="2"/>
+                <polygon points="34,10 18,34 31,34 27,54 46,28 33,28" fill="#fef08a" stroke="#f97316" stroke-width="1.5"/>
+            </svg>`;
+    }
+}
+
+const handContainer = document.getElementById('hand-container');
+const nextCardSlot = document.getElementById('next-card-slot');
+const nextCardName = document.getElementById('next-card-name');
+const deployHint = document.getElementById('deploy-hint');
+const deployHintText = document.getElementById('deploy-hint-text');
+
+function renderHandUI() {
+    handContainer.innerHTML = '';
+
+    state.playerHand.forEach((cardId, idx) => {
+        const card = getCardById(cardId);
+        const canAfford = state.playerElixir >= card.cost;
+        const isSelected = state.selectedHandIndex === idx;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `wizard-card rounded-xl p-1.5 flex flex-col justify-between items-center text-center select-none ${
+            canAfford ? 'ready cursor-pointer' : 'disabled'
+        } ${isSelected ? 'selected' : ''}`;
+
+        btn.innerHTML = `
+            <div class="w-full flex justify-between items-center">
+                <span class="elixir-badge w-5 h-5 rounded-full text-[11px] font-black text-white flex items-center justify-center">
+                    ${card.cost}
+                </span>
+                <span class="text-[9px] uppercase font-bold px-1 rounded ${
+                    card.type === 'spell' ? 'bg-red-900/80 text-red-200' : card.flying ? 'bg-sky-900/80 text-sky-200' : 'bg-slate-800 text-slate-300'
+                }">
+                    ${card.type === 'spell' ? 'Spell' : card.flying ? 'Air' : 'Troop'}
+                </span>
+            </div>
+            <div class="my-0.5 flex items-center justify-center">
+                ${getCardBadgeSVG(card)}
+            </div>
+            <div class="w-full">
+                <div class="text-[11px] font-extrabold text-amber-100 leading-tight truncate">${card.name}</div>
+                <div class="text-[9px] text-slate-400 truncate">${card.subtitle}</div>
+            </div>
+        `;
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sfx.init();
+            if (state.selectedHandIndex === idx) {
+                state.selectedHandIndex = null;
+                deployHint.classList.add('hidden');
+            } else {
+                state.selectedHandIndex = idx;
+                deployHint.classList.remove('hidden');
+                deployHintText.textContent = card.type === 'spell'
+                    ? `Cast ${card.name} anywhere in the arena!`
+                    : `Tap your side of the grounds to summon ${card.name}!`;
+            }
+            renderHandUI();
+        });
+
+        handContainer.appendChild(btn);
+    });
+
+    // Next Card Preview
+    const nextId = state.playerDeckQueue[0];
+    if (nextId) {
+        const nextCard = getCardById(nextId);
+        nextCardSlot.innerHTML = `
+            <span class="absolute top-0.5 left-0.5 elixir-badge w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center">${nextCard.cost}</span>
+            <div class="scale-75">${getCardBadgeSVG(nextCard)}</div>
+        `;
+        nextCardName.textContent = nextCard.name;
+    }
+}
+
+function updateCardAffordabilityClasses() {
+    const buttons = handContainer.children;
+    for (let i = 0; i < buttons.length; i++) {
+        const card = getCardById(state.playerHand[i]);
+        if (!card) continue;
+        const canAfford = state.playerElixir >= card.cost;
+        if (canAfford) {
+            buttons[i].classList.add('ready', 'cursor-pointer');
+            buttons[i].classList.remove('disabled');
+        } else {
+            buttons[i].classList.remove('ready');
+            buttons[i].classList.add('disabled');
+        }
+    }
+}
+
+let unitUidCounter = 1;
+
+function playCard(team, handIndex, targetX, targetY) {
+    const isPlayer = team === 'player';
+    const hand = isPlayer ? state.playerHand : state.enemyHand;
+    const queue = isPlayer ? state.playerDeckQueue : state.enemyDeckQueue;
+    const cardId = hand[handIndex];
+    const card = getCardById(cardId);
+    if (!card) return false;
+
+    const currentElixir = isPlayer ? state.playerElixir : state.enemyElixir;
+    if (currentElixir < card.cost) return false;
+
+    // Spend elixir
+    if (isPlayer) {
+        state.playerElixir -= card.cost;
+        state.cardsCastCount++;
+    } else {
+        state.enemyElixir -= card.cost;
+    }
+
+    // Clamp spawn position for units
+    let spawnX = Math.max(36, Math.min(ARENA.width - 36, targetX));
+    let spawnY = targetY;
+
+    if (card.type === 'unit') {
+        if (isPlayer) {
+            // Player can spawn in own half; if an enemy pocket tower is down, allow slightly deeper
+            const minPlayerY = getMinPlayerSpawnY(spawnX);
+            spawnY = Math.max(minPlayerY, Math.min(ARENA.height - 40, targetY));
+        } else {
+            spawnY = Math.max(45, Math.min(ARENA.riverY - 40, targetY));
+        }
+
+        const count = card.count || 1;
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const offset = count > 1 ? 18 : 0;
+            const ux = spawnX + Math.cos(angle) * offset;
+            const uy = spawnY + Math.sin(angle) * offset;
+
+            state.units.push({
+                uid: unitUidCounter++,
+                cardId: card.id,
+                name: card.name,
+                team: team,
+                x: ux,
+                y: uy,
+                hp: card.hp,
+                maxHp: card.hp,
+                damage: card.damage,
+                range: card.range,
+                attackSpeed: card.attackSpeed,
+                cooldown: 0.3,
+                speed: card.speed,
+                splash: card.splash,
+                flying: card.flying,
+                targetType: card.targetType,
+                canHitAir: card.canHitAir,
+                radius: card.radius,
+                color: card.color,
+                accent: card.accent,
+                projectileColor: card.projectileColor,
+                stunTimer: 0,
+                spawnAnim: 1.0,
+                walkCycle: Math.random() * 10
+            });
+        }
+
+        // Summon visual ring
+        state.effects.push({
+            type: 'summon',
+            x: spawnX,
+            y: spawnY,
+            radius: 5,
+            maxRadius: 36,
+            color: isPlayer ? '#38bdf8' : '#f87171',
+            alpha: 1.0
+        });
+
+        sfx.playSummon(card.hp > 1500);
+    } else if (card.type === 'spell') {
+        castSpell(team, card, spawnX, targetY);
+    }
+
+    // Rotate card to back of queue and draw next
+    const nextCardId = queue.shift();
+    queue.push(cardId);
+    hand[handIndex] = nextCardId;
+
+    if (isPlayer) {
+        state.selectedHandIndex = null;
+        deployHint.classList.add('hidden');
+        renderHandUI();
+    }
+
+    return true;
+}
+
+function getMinPlayerSpawnY(x) {
+    // Standard river boundary is riverY + 32 (432)
+    // If player destroyed enemy left or right tower, allow pocket deployment up to y=280 on that lane
+    const leftEnemyTower = state.towers.find(t => t.id === 'enemy_left');
+    const rightEnemyTower = state.towers.find(t => t.id === 'enemy_right');
+    if (x < 250 && leftEnemyTower && leftEnemyTower.destroyed) return 280;
+    if (x >= 250 && rightEnemyTower && rightEnemyTower.destroyed) return 280;
+    return ARENA.riverY + 32;
+}
+
+function castSpell(team, card, x, y) {
+    sfx.playSpellBlast();
+
+    // Expanding scarlet shockwave + lightning bolts
+    state.effects.push({
+        type: 'spell_blast',
+        x,
+        y,
+        radius: 10,
+        maxRadius: card.radius,
+        color: card.color,
+        accent: card.accent,
+        alpha: 1.0,
+        bolts: Array.from({ length: 6 }, () => ({
+            angle: Math.random() * Math.PI * 2,
+            len: card.radius * (0.6 + Math.random() * 0.4)
+        }))
+    });
+
+    state.floatingTexts.push({
+        x,
+        y: y - 18,
+        text: 'EXPELLIARMUS!',
+        color: '#fef08a',
+        alpha: 1.3,
+        vy: -28
+    });
+
+    // Damage & stun enemy units in radius
+    state.units.forEach(u => {
+        if (u.team !== team) {
+            const dist = Math.hypot(u.x - x, u.y - y);
+            if (dist <= card.radius + u.radius) {
+                u.hp -= card.damage;
+                u.stunTimer = Math.max(u.stunTimer, card.stunDuration || 1.5);
+                // Knockback away from spell center
+                const angle = Math.atan2(u.y - y, u.x - x);
+                u.x = Math.max(30, Math.min(ARENA.width - 30, u.x + Math.cos(angle) * 18));
+                u.y = Math.max(30, Math.min(ARENA.height - 30, u.y + Math.sin(angle) * 18));
+
+                state.floatingTexts.push({
+                    x: u.x,
+                    y: u.y - 12,
+                    text: `-${card.damage} STUN`,
+                    color: '#fca5a5',
+                    alpha: 1.0,
+                    vy: -22
+                });
+            }
+        }
+    });
+
+    // Damage enemy towers in radius
+    state.towers.forEach(t => {
+        if (!t.destroyed && t.team !== team) {
+            const dist = Math.hypot(t.x - x, t.y - y);
+            if (dist <= card.radius + t.radius) {
+                const dmg = card.crownTowerDamage || Math.round(card.damage * 0.4);
+                damageTower(t, dmg);
+                t.cooldown += 1.0; // Brief stun
+            }
+        }
+    });
+}
+
+function updateOpponentAI(dt) {
+    state.aiThinkTimer -= dt;
+    if (state.aiThinkTimer > 0) return;
+
+    // Reset think timer based on difficulty
+    const thinkIntervals = { easy: 2.3, normal: 1.45, hard: 0.95 };
+    state.aiThinkTimer = thinkIntervals[state.difficulty] || 1.45;
+
+    // Analyze threats on left vs right lane
+    let leftThreat = 0;
+    let rightThreat = 0;
+    let bestSpellCluster = null;
+    let maxClusterScore = 0;
+
+    state.units.forEach(u => {
+        if (u.team === 'player') {
+            const weight = (u.hp / 300) + (u.y < ARENA.riverY ? 2.5 : 1.0);
+            if (u.x < ARENA.width / 2) leftThreat += weight;
+            else rightThreat += weight;
+
+            // Check if multiple player units are clustered for an AI Expelliarmus spell
+            let nearby = 0;
+            state.units.forEach(other => {
+                if (other.team === 'player' && Math.hypot(other.x - u.x, other.y - u.y) < 88) {
+                    nearby++;
+                }
+            });
+            if (nearby >= 2 && nearby > maxClusterScore) {
+                maxClusterScore = nearby;
+                bestSpellCluster = { x: u.x, y: u.y };
+            }
+        }
+    });
+
+    // 1. Check if AI has Expelliarmus and there is a high-value cluster
+    const spellIdx = state.enemyHand.findIndex(id => id === 'expelliarmus');
+    if (spellIdx !== -1 && bestSpellCluster && state.enemyElixir >= 4) {
+        playCard('enemy', spellIdx, bestSpellCluster.x, bestSpellCluster.y);
+        return;
+    }
+
+    // 2. Defend immediately if player units crossed the river or threaten a tower
+    const urgentDefense = leftThreat > 2.2 || rightThreat > 2.2;
+    const elixirThreshold = urgentDefense ? 3 : (state.enemyElixir >= 8.2 ? 4 : 9.5);
+
+    if (state.enemyElixir < elixirThreshold) return;
+
+    // Pick a playable unit card from enemy hand
+    const affordableIndices = [];
+    state.enemyHand.forEach((id, idx) => {
+        const c = getCardById(id);
+        if (c && c.type === 'unit' && c.cost <= state.enemyElixir) {
+            affordableIndices.push(idx);
+        }
+    });
+
+    if (affordableIndices.length === 0) return;
+
+    const chosenIndex = affordableIndices[Math.floor(Math.random() * affordableIndices.length)];
+    const chosenCard = getCardById(state.enemyHand[chosenIndex]);
+
+    // Decide lane X and Y
+    let laneX = ARENA.leftLaneX;
+    if (urgentDefense) {
+        laneX = leftThreat >= rightThreat ? ARENA.leftLaneX : ARENA.rightLaneX;
+    } else {
+        // Attack weaker player tower or random lane
+        const pLeft = state.towers.find(t => t.id === 'player_left');
+        const pRight = state.towers.find(t => t.id === 'player_right');
+        if (pLeft && !pLeft.destroyed && pRight && !pRight.destroyed) {
+            laneX = Math.random() < 0.5 ? ARENA.leftLaneX : ARENA.rightLaneX;
+        } else if (pLeft && !pLeft.destroyed) {
+            laneX = ARENA.leftLaneX;
+        } else {
+            laneX = ARENA.rightLaneX;
+        }
+    }
+
+    const spawnX = laneX + (Math.random() * 44 - 22);
+    // Tanks spawn further back to build a push; fast units spawn near bridge
+    const spawnY = urgentDefense
+        ? 210 + Math.random() * 60
+        : (chosenCard.hp > 1400 ? 125 : 265 + Math.random() * 55);
+
+    playCard('enemy', chosenIndex, spawnX, spawnY);
+}
+
+function findTargetForUnit(unit) {
+    let bestTarget = null;
+    let bestDist = Infinity;
+
+    // 1. Check enemy units (unless unit only targets buildings like Hagrid)
+    if (unit.targetType !== 'buildings') {
+        for (const other of state.units) {
+            if (other.team === unit.team || other.hp <= 0) continue;
+            if (other.flying && !unit.canHitAir) continue;
+
+            const d = Math.hypot(other.x - unit.x, other.y - unit.y);
+            // Aggro sight radius is 185px
+            if (d <= Math.max(185, unit.range + 40) && d < bestDist) {
+                bestDist = d;
+                bestTarget = { kind: 'unit', ref: other, dist: d };
+            }
+        }
+    }
+
+    if (bestTarget) return bestTarget;
+
+    // 2. Otherwise target nearest standing enemy tower
+    for (const tower of state.towers) {
+        if (tower.team === unit.team || tower.destroyed) continue;
+        const d = Math.hypot(tower.x - unit.x, tower.y - unit.y);
+        if (d < bestDist) {
+            bestDist = d;
+            bestTarget = { kind: 'tower', ref: tower, dist: d };
+        }
+    }
+
+    return bestTarget;
+}
+
+function getWaypointToward(unit, targetEntity) {
+    // Flying units fly directly toward their target over the Black Lake
+    if (unit.flying) {
+        return { x: targetEntity.x, y: targetEntity.y };
+    }
+
+    // Ground units must use the West or East Stone Bridge if on opposite sides of the river
+    const riverTop = ARENA.riverY - ARENA.riverHeight / 2;
+    const riverBottom = ARENA.riverY + ARENA.riverHeight / 2;
+
+    const unitSide = unit.y < ARENA.riverY ? 'top' : 'bottom';
+    const targetSide = targetEntity.y < ARENA.riverY ? 'top' : 'bottom';
+
+    if (unitSide !== targetSide) {
+        const bridgeX = Math.abs(unit.x - ARENA.leftLaneX) <= Math.abs(unit.x - ARENA.rightLaneX)
+            ? ARENA.leftLaneX
+            : ARENA.rightLaneX;
+
+        // If not aligned horizontally with the bridge, steer to bridge entrance first
+        if (Math.abs(unit.x - bridgeX) > 22) {
+            const entranceY = unitSide === 'bottom' ? riverBottom + 10 : riverTop - 10;
+            return { x: bridgeX, y: entranceY };
+        } else {
+            // Walk straight across the bridge
+            const exitY = unitSide === 'bottom' ? riverTop - 12 : riverBottom + 12;
+            return { x: bridgeX, y: exitY };
+        }
+    }
+
+    return { x: targetEntity.x, y: targetEntity.y };
+}
+
+function damageTower(tower, amount) {
+    if (tower.destroyed) return;
+    tower.hp = Math.max(0, tower.hp - amount);
+    tower.awake = true; // Any damage wakes the King Tower
+
+    // Also wake team's King Tower if a House Tower is hit below 100% or destroyed
+    if (tower.hp <= 0) {
+        tower.destroyed = true;
+        sfx.playTowerDestroy();
+
+        // Wake the side's Headmaster/King Tower
+        const king = state.towers.find(t => t.team === tower.team && t.isKing);
+        if (king) king.awake = true;
+
+        // Explosion effect
+        state.effects.push({
+            type: 'tower_collapse',
+            x: tower.x,
+            y: tower.y,
+            radius: 12,
+            maxRadius: 75,
+            color: '#f59e0b',
+            alpha: 1.0
+        });
+
+        updateCrownHUD();
+        showArenaBanner(
+            tower.team === 'enemy' ? 'TOWER DESTROYED!' : 'OUR TOWER FELL!',
+            tower.name
+        );
+
+        // Instant 3-crown check if King/Headmaster Tower falls
+        if (tower.isKing) {
+            endMatch(tower.team === 'enemy' ? 'player' : 'enemy');
+        } else if (state.overtime) {
+            // Sudden Death in Overtime!
+            endMatch(tower.team === 'enemy' ? 'player' : 'enemy');
+        }
+    }
+}
+
+function performAttack(attacker, targetWrap, isTowerAttacker = false) {
+    const target = targetWrap.ref;
+    const isRanged = attacker.range > 55 || isTowerAttacker;
+
+    if (isRanged) {
+        sfx.playWandZap(attacker.team === 'player' ? 660 : 480);
+        state.projectiles.push({
+            x: attacker.x,
+            y: attacker.y - (isTowerAttacker ? 18 : 6),
+            targetKind: targetWrap.kind,
+            targetRef: target,
+            targetX: target.x,
+            targetY: target.y,
+            speed: 340,
+            damage: attacker.damage,
+            splash: attacker.splash || 0,
+            team: attacker.team,
+            color: attacker.projectileColor || (attacker.team === 'player' ? '#38bdf8' : '#ef4444')
+        });
+    } else {
+        // Melee strike
+        sfx.playHeavyHit();
+        applyHitDamage(attacker.team, targetWrap.kind, target, attacker.damage, attacker.splash || 0);
+
+        state.effects.push({
+            type: 'slash',
+            x: (attacker.x + target.x) / 2,
+            y: (attacker.y + target.y) / 2,
+            radius: 4,
+            maxRadius: attacker.splash > 0 ? attacker.splash : 24,
+            color: attacker.accent || '#fbbf24',
+            alpha: 0.9
+        });
+    }
+}
+
+function applyHitDamage(attackerTeam, targetKind, target, damage, splashRadius) {
+    if (splashRadius > 0) {
+        // Splash hits all enemy units near impact
+        state.units.forEach(u => {
+            if (u.team !== attackerTeam && u.hp > 0) {
+                const d = Math.hypot(u.x - target.x, u.y - target.y);
+                if (d <= splashRadius + u.radius) {
+                    u.hp -= damage;
+                }
+            }
+        });
+        if (targetKind === 'tower' && !target.destroyed) {
+            damageTower(target, damage);
+        }
+    } else {
+        if (targetKind === 'unit') {
+            target.hp -= damage;
+        } else if (targetKind === 'tower') {
+            damageTower(target, damage);
+        }
+    }
+}
+
+function updateSimulation(dt) {
+    if (!state.running || state.paused) return;
+
+    // 1. Update Match Clock & Elixir Surge
+    state.timeRemaining -= dt;
+    if (!state.doubleElixir && state.timeRemaining <= 60) {
+        state.doubleElixir = true;
+        document.getElementById('double-elixir-pill').classList.remove('hidden');
+        document.getElementById('elixir-rate-label').textContent = '2.0x';
+        showArenaBanner('2x MAGIC SURGE!', 'Elixir regenerates twice as fast!');
+    }
+
+    if (state.timeRemaining <= 0) {
+        const pCrowns = getCrownsFor('player');
+        const eCrowns = getCrownsFor('enemy');
+        if (pCrowns !== eCrowns || state.overtime) {
+            // Determine winner by crowns, or tiebreaker tower HP percentage
+            if (pCrowns > eCrowns) endMatch('player');
+            else if (eCrowns > pCrowns) endMatch('enemy');
+            else {
+                // Tiebreaker: lowest HP tower loses
+                const pTotalHp = state.towers.filter(t => t.team === 'player' && !t.destroyed).reduce((s, t) => s + t.hp, 0);
+                const eTotalHp = state.towers.filter(t => t.team === 'enemy' && !t.destroyed).reduce((s, t) => s + t.hp, 0);
+                endMatch(pTotalHp >= eTotalHp ? 'player' : 'enemy');
+            }
+            return;
+        } else {
+            // Trigger 60s Sudden Death Overtime!
+            state.overtime = true;
+            state.timeRemaining = 60;
+            showArenaBanner('SUDDEN DEATH!', 'First Wizard to take a Tower wins!');
+        }
+    }
+
+    updateTimerDisplay();
+
+    // 2. Regenerate Elixir
+    const mult = state.doubleElixir ? 2.0 : 1.0;
+    const eGain = state.baseElixirRate * mult * dt;
+    const aiDifficultyMult = state.difficulty === 'hard' ? 1.18 : state.difficulty === 'easy' ? 0.82 : 1.0;
+
+    state.playerElixir = Math.min(state.maxElixir, state.playerElixir + eGain);
+    state.enemyElixir = Math.min(state.maxElixir, state.enemyElixir + eGain * aiDifficultyMult);
+
+    updateElixirHUD();
+
+    // 3. AI Opponent Decision Making
+    updateOpponentAI(dt);
+
+    // 4. Update Units
+    for (let i = 0; i < state.units.length; i++) {
+        const u = state.units[i];
+        if (u.hp <= 0) continue;
+
+        if (u.spawnAnim > 0) u.spawnAnim = Math.max(0, u.spawnAnim - dt * 3);
+
+        if (u.stunTimer > 0) {
+            u.stunTimer -= dt;
+            continue;
+        }
+
+        u.cooldown = Math.max(0, u.cooldown - dt);
+
+        const targetWrap = findTargetForUnit(u);
+        if (!targetWrap) continue;
+
+        const target = targetWrap.ref;
+        const effectiveDist = targetWrap.dist - u.radius - (target.radius || 15);
+
+        if (effectiveDist <= u.range) {
+            // In range -> Attack!
+            if (u.cooldown <= 0) {
+                performAttack(u, targetWrap, false);
+                u.cooldown = u.attackSpeed;
+            }
+        } else {
+            // Move along waypoint path
+            const wp = getWaypointToward(u, target);
+            const angle = Math.atan2(wp.y - u.y, wp.x - u.x);
+            u.x += Math.cos(angle) * u.speed * dt;
+            u.y += Math.sin(angle) * u.speed * dt;
+            u.walkCycle += dt * (u.speed * 0.15);
+        }
+    }
+
+    // Soft collision separation between same-layer units
+    for (let i = 0; i < state.units.length; i++) {
+        for (let j = i + 1; j < state.units.length; j++) {
+            const a = state.units[i];
+            const b = state.units[j];
+            if (a.flying !== b.flying) continue;
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy) || 0.1;
+            const minDist = (a.radius + b.radius) * 0.78;
+            if (dist < minDist) {
+                const push = (minDist - dist) * 0.35;
+                const nx = dx / dist;
+                const ny = dy / dist;
+                a.x -= nx * push;
+                a.y -= ny * push;
+                b.x += nx * push;
+                b.y += ny * push;
+            }
+        }
+    }
+
+    // Remove defeated units and spawn soul wisps
+    for (let i = state.units.length - 1; i >= 0; i--) {
+        const u = state.units[i];
+        if (u.hp <= 0) {
+            state.effects.push({
+                type: 'poof',
+                x: u.x,
+                y: u.y,
+                radius: 4,
+                maxRadius: 28,
+                color: u.team === 'player' ? '#60a5fa' : '#f87171',
+                alpha: 0.95
+            });
+            state.units.splice(i, 1);
+        }
+    }
+
+    // 5. Update Towers
+    state.towers.forEach(t => {
+        if (t.destroyed || !t.awake) return;
+        t.cooldown = Math.max(0, t.cooldown - dt);
+        if (t.cooldown > 0) return;
+
+        // Find closest enemy unit within tower range
+        let closest = null;
+        let closestDist = Infinity;
+        state.units.forEach(u => {
+            if (u.team !== t.team && u.hp > 0) {
+                const d = Math.hypot(u.x - t.x, u.y - t.y);
+                if (d <= t.range + u.radius && d < closestDist) {
+                    closestDist = d;
+                    closest = u;
+                }
+            }
+        });
+
+        if (closest) {
+            performAttack(t, { kind: 'unit', ref: closest, dist: closestDist }, true);
+            t.cooldown = t.attackSpeed;
+        }
+    });
+
+    // 6. Update Projectiles
+    for (let i = state.projectiles.length - 1; i >= 0; i--) {
+        const p = state.projectiles[i];
+        if (p.targetRef && p.targetRef.hp > 0 && !p.targetRef.destroyed) {
+            p.targetX = p.targetRef.x;
+            p.targetY = p.targetRef.y;
+        }
+
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= p.speed * dt + 8) {
+            applyHitDamage(p.team, p.targetKind, p.targetRef, p.damage, p.splash);
+            state.effects.push({
+                type: 'impact',
+                x: p.targetX,
+                y: p.targetY,
+                radius: 4,
+                maxRadius: p.splash > 0 ? p.splash : 18,
+                color: p.color,
+                alpha: 0.9
+            });
+            state.projectiles.splice(i, 1);
+        } else {
+            p.x += (dx / dist) * p.speed * dt;
+            p.y += (dy / dist) * p.speed * dt;
+        }
+    }
+
+    // 7. Update Visual Effects & Floating Combat Text
+    for (let i = state.effects.length - 1; i >= 0; i--) {
+        const fx = state.effects[i];
+        fx.radius += (fx.maxRadius - fx.radius) * Math.min(1, dt * 10);
+        fx.alpha -= dt * 2.2;
+        if (fx.alpha <= 0) state.effects.splice(i, 1);
+    }
+
+    for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatingTexts[i];
+        ft.y += ft.vy * dt;
+        ft.alpha -= dt * 1.1;
+        if (ft.alpha <= 0) state.floatingTexts.splice(i, 1);
+    }
+
+    // 8. Drift ambient fireflies
+    state.ambientParticles.forEach(p => {
+        p.x = (p.x + p.vx * dt + ARENA.width) % ARENA.width;
+        p.y = (p.y + p.vy * dt + ARENA.height) % ARENA.height;
+    });
+}
+
+const canvas = document.getElementById('battle-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    const container = document.getElementById('arena-container');
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+function renderArena() {
+    const dpr = window.devicePixelRatio || 1;
+    const scaleX = canvas.width / ARENA.width;
+    const scaleY = canvas.height / ARENA.height;
+
+    ctx.save();
+    ctx.scale(scaleX, scaleY);
+
+    // 1. Checkerboard Hogwarts Pitch Grass
+    const cols = 10;
+    const rows = 16;
+    const tileW = ARENA.width / cols;
+    const tileH = ARENA.height / rows;
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const isEnemySide = r < rows / 2;
+            const even = (r + c) % 2 === 0;
+            if (isEnemySide) {
+                ctx.fillStyle = even ? '#132a23' : '#0f231d';
+            } else {
+                ctx.fillStyle = even ? '#163429' : '#122b22';
+            }
+            ctx.fillRect(c * tileW, r * tileH, tileW + 0.5, tileH + 0.5);
+        }
+    }
+
+    // 2. Stone Walkways (Two Lanes + King paths)
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+    ctx.lineWidth = 34;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Left Lane Path
+    ctx.beginPath();
+    ctx.moveTo(250, 78);
+    ctx.lineTo(ARENA.leftLaneX, 165);
+    ctx.lineTo(ARENA.leftLaneX, 635);
+    ctx.lineTo(250, 722);
+    ctx.stroke();
+
+    // Right Lane Path
+    ctx.beginPath();
+    ctx.moveTo(250, 78);
+    ctx.lineTo(ARENA.rightLaneX, 165);
+    ctx.lineTo(ARENA.rightLaneX, 635);
+    ctx.lineTo(250, 722);
+    ctx.stroke();
+
+    // 3. The Black Lake River in the Center
+    const riverTop = ARENA.riverY - ARENA.riverHeight / 2;
+    const riverGrad = ctx.createLinearGradient(0, riverTop, 0, riverTop + ARENA.riverHeight);
+    riverGrad.addColorStop(0, '#082f49');
+    riverGrad.addColorStop(0.5, '#0284c7');
+    riverGrad.addColorStop(1, '#082f49');
+
+    ctx.fillStyle = riverGrad;
+    ctx.fillRect(0, riverTop, ARENA.width, ARENA.riverHeight);
+
+    // Animated water ripples
+    const timeNow = performance.now() * 0.002;
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.25)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+        const waveX = ((i * 95 + timeNow * 22) % (ARENA.width + 60)) - 30;
+        const waveY = riverTop + 14 + (i % 3) * 13;
+        ctx.beginPath();
+        ctx.moveTo(waveX, waveY);
+        ctx.quadraticCurveTo(waveX + 15, waveY - 4, waveX + 30, waveY);
+        ctx.stroke();
+    }
+
+    // River stone banks
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, riverTop);
+    ctx.lineTo(ARENA.width, riverTop);
+    ctx.moveTo(0, riverTop + ARENA.riverHeight);
+    ctx.lineTo(ARENA.width, riverTop + ARENA.riverHeight);
+    ctx.stroke();
+
+    // 4. Two Hogwarts Covered Stone Bridges
+    [ARENA.leftLaneX, ARENA.rightLaneX].forEach(bx => {
+        const bw = ARENA.bridgeWidth;
+        const bh = ARENA.riverHeight + 18;
+        const x = bx - bw / 2;
+        const y = ARENA.riverY - bh / 2;
+
+        // Bridge shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(x + 4, y + 4, bw, bh);
+
+        // Stone deck
+        ctx.fillStyle = '#475569';
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x, y, bw, bh, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Wooden planks texture
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        for (let py = y + 8; py < y + bh; py += 9) {
+            ctx.beginPath();
+            ctx.moveTo(x + 4, py);
+            ctx.lineTo(x + bw - 4, py);
+            ctx.stroke();
+        }
+
+        // Torch pillars on bridge corners
+        [[x + 4, y + 4], [x + bw - 4, y + 4], [x + 4, y + bh - 4], [x + bw - 4, y + bh - 4]].forEach(([tx, ty]) => {
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    });
+
+    // 5. Deployment Zone Highlight When Holding a Card
+    if (state.selectedHandIndex !== null) {
+        const selectedCard = getCardById(state.playerHand[state.selectedHandIndex]);
+        if (selectedCard && selectedCard.type === 'unit') {
+            // Shade forbidden top half red
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.14)';
+            ctx.fillRect(0, 0, ARENA.width, ARENA.riverY + 26);
+
+            // Dashed golden deployment border
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 6]);
+            ctx.strokeRect(10, ARENA.riverY + 30, ARENA.width - 20, ARENA.height - ARENA.riverY - 40);
+            ctx.setLineDash([]);
+        }
+
+        // Placement preview circle under cursor
+        if (state.pointer.active) {
+            ctx.save();
+            const isSpell = selectedCard.type === 'spell';
+            const r = isSpell ? selectedCard.radius : 28;
+            ctx.beginPath();
+            ctx.arc(state.pointer.x, state.pointer.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = isSpell ? 'rgba(239, 68, 68, 0.22)' : 'rgba(56, 189, 248, 0.22)';
+            ctx.fill();
+            ctx.strokeStyle = isSpell ? '#f87171' : '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
+    // 6. Render Towers (with ruins if destroyed)
+    state.towers.forEach(t => drawTower(t));
+
+    // 7. Render Ground Units first, then Flying Units (so air units soar above)
+    const groundUnits = state.units.filter(u => !u.flying).sort((a, b) => a.y - b.y);
+    const airUnits = state.units.filter(u => u.flying).sort((a, b) => a.y - b.y);
+
+    groundUnits.forEach(u => drawUnit(u));
+    airUnits.forEach(u => drawUnit(u));
+
+    // 8. Render Projectiles
+    state.projectiles.forEach(p => {
+        ctx.save();
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.splash > 0 ? 6.5 : 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // 9. Render Magical Effects (Spell Blasts, Summon Rings, Slashes)
+    state.effects.forEach(fx => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, fx.alpha);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = fx.type === 'spell_blast' ? 4 : 2.5;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (fx.type === 'spell_blast') {
+            ctx.fillStyle = fx.color;
+            ctx.globalAlpha = Math.max(0, fx.alpha * 0.28);
+            ctx.fill();
+
+            // Draw scarlet lightning bolts
+            ctx.globalAlpha = Math.max(0, fx.alpha);
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 2;
+            (fx.bolts || []).forEach(b => {
+                ctx.beginPath();
+                ctx.moveTo(fx.x, fx.y);
+                const midX = fx.x + Math.cos(b.angle + 0.2) * (b.len * 0.5);
+                const midY = fx.y + Math.sin(b.angle + 0.2) * (b.len * 0.5);
+                const endX = fx.x + Math.cos(b.angle) * b.len;
+                const endY = fx.y + Math.sin(b.angle) * b.len;
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            });
+        }
+        ctx.restore();
+    });
+
+    // 10. Floating Combat Text
+    state.floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, ft.alpha));
+        ctx.font = '800 12px "Plus Jakarta Sans", sans-serif';
+        ctx.fillStyle = ft.color;
+        ctx.strokeStyle = '#020617';
+        ctx.lineWidth = 3;
+        ctx.textAlign = 'center';
+        ctx.strokeText(ft.text, ft.x, ft.y);
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+    });
+
+    // 11. Ambient Fireflies
+    state.ambientParticles.forEach(p => {
+        ctx.fillStyle = `rgba(253, 224, 71, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
+}
+
+function drawTower(t) {
+    ctx.save();
+
+    if (t.destroyed) {
+        // Scorched stone ruins
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.radius * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🪨', t.x, t.y);
+        ctx.restore();
+        return;
+    }
+
+    const isPlayer = t.team === 'player';
+    const baseColor = isPlayer ? '#1d4ed8' : '#991b1b';
+    const trimColor = isPlayer ? '#fbbf24' : '#f87171';
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y + 5, t.radius + 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer Battlement Turret
+    ctx.fillStyle = '#334155';
+    ctx.strokeStyle = trimColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner House Spire Roof
+    ctx.fillStyle = baseColor;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.radius * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crest Icon on Spire
+    ctx.font = `${t.isKing ? 20 : 15}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t.isKing ? '👑' : (isPlayer ? '🦁' : '🐍'), t.x, t.y);
+
+    // Health Bar & Numeric HP
+    const barW = t.isKing ? 64 : 50;
+    const barH = 7;
+    const bx = t.x - barW / 2;
+    const by = isPlayer ? t.y + t.radius + 8 : t.y - t.radius - 16;
+    const pct = Math.max(0, t.hp / t.maxHp);
+
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+    ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+
+    ctx.fillStyle = isPlayer ? '#38bdf8' : '#ef4444';
+    ctx.fillRect(bx, by, barW * pct, barH);
+
+    ctx.font = '800 9px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#020617';
+    ctx.lineWidth = 2.5;
+    ctx.strokeText(Math.ceil(t.hp), t.x, by - 4);
+    ctx.fillText(Math.ceil(t.hp), t.x, by - 4);
+
+    ctx.restore();
+}
+
+function drawUnit(u) {
+    ctx.save();
+
+    const isPlayer = u.team === 'player';
+    const bob = Math.sin(u.walkCycle) * 2.2;
+    const hoverOffset = u.flying ? 16 + Math.sin(performance.now() * 0.006 + u.uid) * 3 : 0;
+
+    // Ground shadow
+    ctx.fillStyle = u.flying ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(u.x, u.y + 5, u.radius * 0.85, u.radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const drawY = u.y - hoverOffset + bob;
+
+    // Team ring under character
+    ctx.strokeStyle = isPlayer ? '#38bdf8' : '#f87171';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(u.x, drawY, u.radius, 0, Math.PI * 2);
+    ctx.fillStyle = u.color;
+    ctx.fill();
+    ctx.stroke();
+
+    // Character specific features
+    if (u.cardId === 'harry') {
+        // Glasses + Lightning Scar
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.arc(u.x, drawY, u.radius * 0.68, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.6;
+        ctx.strokeRect(u.x - 6, drawY - 3, 5, 4);
+        ctx.strokeRect(u.x + 1, drawY - 3, 5, 4);
+    } else if (u.cardId === 'hermione') {
+        // Sparkle aura + bushy hair
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath();
+        ctx.arc(u.x, drawY, u.radius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#e879f9';
+        ctx.beginPath();
+        ctx.arc(u.x + u.radius * 0.7, drawY - 4, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (u.cardId === 'ron') {
+        // Ginger hair + knight blade
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath();
+        ctx.arc(u.x, drawY, u.radius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (u.cardId === 'hagrid') {
+        // Giant beard + Pink Umbrella
+        ctx.fillStyle = '#292524';
+        ctx.beginPath();
+        ctx.arc(u.x, drawY + 3, u.radius * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ec4899';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(u.x + u.radius * 0.6, drawY + 6);
+        ctx.lineTo(u.x + u.radius + 4, drawY - 10);
+        ctx.stroke();
+    } else if (u.cardId === 'dementors') {
+        // Dark wraith cloak + icy core
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(u.x, drawY, 4, 0, Math.PI * 2);
+        ctx.fill();
+    } else if (u.cardId === 'hippogriff') {
+        // Flapping wings
+        const wingSpan = u.radius + 8 + Math.sin(performance.now() * 0.015 + u.uid) * 4;
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(u.x - wingSpan, drawY);
+        ctx.quadraticCurveTo(u.x, drawY - 8, u.x + wingSpan, drawY);
+        ctx.stroke();
+    } else if (u.cardId === 'troll') {
+        // Heavy wooden club
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(u.x + u.radius - 4, drawY - 12, 6, 20);
+    }
+
+    // Stunned Stars Overlay
+    if (u.stunTimer > 0) {
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡STUN', u.x, drawY - u.radius - 12);
+    }
+
+    // Health Bar (shown when damaged or for tanks)
+    if (u.hp < u.maxHp || u.maxHp >= 1500) {
+        const bw = Math.max(26, u.radius * 1.8);
+        const bh = 4.5;
+        const bx = u.x - bw / 2;
+        const by = drawY - u.radius - 9;
+        const pct = Math.max(0, u.hp / u.maxHp);
+
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
+        ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        ctx.fillStyle = isPlayer ? '#38bdf8' : '#ef4444';
+        ctx.fillRect(bx, by, bw * pct, bh);
+    }
+
+    ctx.restore();
+}
+
+const elixirCountEl = document.getElementById('elixir-count');
+const elixirFillEl = document.getElementById('elixir-fill');
+const timerDisplayEl = document.getElementById('timer-display');
+
+function updateElixirHUD() {
+    const whole = Math.floor(state.playerElixir);
+    if (elixirCountEl.textContent !== String(whole)) {
+        elixirCountEl.textContent = whole;
+        updateCardAffordabilityClasses();
+    }
+    const pct = (state.playerElixir / state.maxElixir) * 100;
+    elixirFillEl.style.width = `${pct}%`;
+}
+
+function updateTimerDisplay() {
+    const t = Math.max(0, Math.ceil(state.timeRemaining));
+    const mins = String(Math.floor(t / 60)).padStart(2, '0');
+    const secs = String(t % 60).padStart(2, '0');
+    timerDisplayEl.textContent = `${mins}:${secs}`;
+    if (t <= 30) {
+        timerDisplayEl.classList.add('text-red-400');
+    } else {
+        timerDisplayEl.classList.remove('text-red-400');
+    }
+}
+
+function getCrownsFor(team) {
+    const targetTeam = team === 'player' ? 'enemy' : 'player';
+    const king = state.towers.find(t => t.team === targetTeam && t.isKing);
+    if (king && king.destroyed) return 3;
+    return state.towers.filter(t => t.team === targetTeam && !t.isKing && t.destroyed).length;
+}
+
+function updateCrownHUD() {
+    document.getElementById('player-crowns').textContent = getCrownsFor('player');
+    document.getElementById('enemy-crowns').textContent = getCrownsFor('enemy');
+}
+
+let bannerTimeout = null;
+function showArenaBanner(title, subtitle = 'Hogwarts Grounds') {
+    const banner = document.getElementById('arena-banner');
+    document.getElementById('arena-banner-text').textContent = title;
+    document.getElementById('arena-banner-sub').textContent = subtitle;
+    banner.classList.remove('opacity-0', 'scale-90');
+    banner.classList.add('opacity-100', 'scale-100');
+
+    clearTimeout(bannerTimeout);
+    bannerTimeout = setTimeout(() => {
+        banner.classList.remove('opacity-100', 'scale-100');
+        banner.classList.add('opacity-0', 'scale-90');
+    }, 2100);
+}
+
+// Canvas Pointer Coordinates Helper
+function getLogicalCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: ((clientX - rect.left) / rect.width) * ARENA.width,
+        y: ((clientY - rect.top) / rect.height) * ARENA.height
+    };
+}
+
+canvas.addEventListener('pointermove', (e) => {
+    const coords = getLogicalCoords(e);
+    state.pointer.x = coords.x;
+    state.pointer.y = coords.y;
+    state.pointer.active = true;
+});
+
+canvas.addEventListener('pointerleave', () => {
+    state.pointer.active = false;
+});
+
+canvas.addEventListener('pointerdown', (e) => {
+    sfx.init();
+    if (!state.running || state.paused) return;
+    if (state.selectedHandIndex === null) return;
+
+    const coords = getLogicalCoords(e);
+    const card = getCardById(state.playerHand[state.selectedHandIndex]);
+    if (!card) return;
+
+    if (state.playerElixir < card.cost) {
+        state.floatingTexts.push({
+            x: coords.x,
+            y: coords.y,
+            text: 'Not Enough Elixir!',
+            color: '#e879f9',
+            alpha: 1.0,
+            vy: -25
+        });
+        return;
+    }
+
+    playCard('player', state.selectedHandIndex, coords.x, coords.y);
+});
+
+function startMatch() {
+    sfx.init();
+    state.running = true;
+    state.paused = false;
+    state.timeRemaining = state.matchDuration;
+    state.overtime = false;
+    state.doubleElixir = false;
+    state.playerElixir = 5;
+    state.enemyElixir = 5;
+    state.selectedHandIndex = null;
+    state.cardsCastCount = 0;
+
+    state.towers = createInitialTowers();
+    state.units = [];
+    state.projectiles = [];
+    state.effects = [];
+    state.floatingTexts = [];
+
+    document.getElementById('double-elixir-pill').classList.add('hidden');
+    document.getElementById('elixir-rate-label').textContent = '1.0x';
+    document.getElementById('start-modal').classList.add('hidden');
+    document.getElementById('gameover-modal').classList.add('hidden');
+    deployHint.classList.add('hidden');
+
+    setupDecks();
+    renderHandUI();
+    updateCrownHUD();
+    updateElixirHUD();
+    resizeCanvas();
+
+    showArenaBanner('WANDS AT THE READY!', 'Destroy the Dark Lord Towers!');
+}
+
+function endMatch(winnerTeam) {
+    state.running = false;
+    const isVictory = winnerTeam === 'player';
+    const pCrowns = getCrownsFor('player');
+    const eCrowns = getCrownsFor('enemy');
+
+    const modal = document.getElementById('gameover-modal');
+    const badge = document.getElementById('result-badge');
+    const icon = document.getElementById('result-icon');
+    const title = document.getElementById('result-title');
+    const subtitle = document.getElementById('result-subtitle');
+
+    if (isVictory) {
+        badge.className = 'w-20 h-20 rounded-full flex items-center justify-center mb-3 border-4 border-amber-400 bg-amber-500/20 text-amber-300 shadow-[0_0_30px_rgba(245,158,11,0.5)]';
+        icon.className = 'fa-solid fa-trophy text-4xl';
+        title.textContent = 'VICTORY!';
+        title.className = 'font-wizard text-3xl font-black tracking-wider mb-1 text-gold-glow';
+        subtitle.textContent = 'The Order of the Phoenix triumphs over the Dark Arts!';
+    } else {
+        badge.className = 'w-20 h-20 rounded-full flex items-center justify-center mb-3 border-4 border-red-500 bg-red-950/60 text-red-400 shadow-[0_0_30px_rgba(239,68,68,0.5)]';
+        icon.className = 'fa-solid fa-skull text-4xl';
+        title.textContent = 'DEFEAT';
+        title.className = 'font-wizard text-3xl font-black tracking-wider mb-1 text-red-400';
+        subtitle.textContent = 'Death Eaters overwhelmed the Hogwarts defenses!';
+    }
+
+    document.getElementById('final-player-score').textContent = pCrowns;
+    document.getElementById('final-enemy-score').textContent = eCrowns;
+
+    const renderStars = (count) => Array.from({ length: 3 }, (_, i) =>
+        `<i class="fa-solid fa-crown ${i < count ? 'text-amber-400' : 'text-slate-700'}"></i>`
+    ).join('');
+
+    document.getElementById('final-player-crowns').innerHTML = renderStars(pCrowns);
+    document.getElementById('final-enemy-crowns').innerHTML = renderStars(eCrowns);
+
+    const elapsed = Math.max(1, Math.round(state.matchDuration - state.timeRemaining));
+    const em = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const es = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('final-time').textContent = `${em}:${es}`;
+    document.getElementById('final-cards-cast').textContent = state.cardsCastCount;
+
+    modal.classList.remove('hidden');
+}
+
+// Populate Start Screen Deck Preview & Field Guide
+function populateStaticModals() {
+    const previewGrid = document.getElementById('deck-preview-grid');
+    const guideList = document.getElementById('guide-list');
+
+    previewGrid.innerHTML = CARD_DATABASE.map(c => `
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-1.5 flex flex-col items-center text-center">
+            <div class="w-full flex justify-between items-center mb-0.5">
+                <span class="elixir-badge w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center">${c.cost}</span>
+                <span class="text-[9px]">${c.icon}</span>
+            </div>
+            <div class="scale-90">${getCardBadgeSVG(c)}</div>
+            <div class="text-[10px] font-bold text-amber-200 truncate w-full">${c.name}</div>
+        </div>
+    `).join('');
+
+    guideList.innerHTML = CARD_DATABASE.map(c => `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center gap-3">
+            <div class="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+                ${getCardBadgeSVG(c)}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-xs text-amber-200">${c.name} <span class="text-slate-400 font-normal">(${c.subtitle})</span></span>
+                    <span class="elixir-badge px-2 py-0.5 rounded-full text-[10px] font-bold text-white">${c.cost} Elixir</span>
+                </div>
+                <p class="text-[11px] text-slate-300 mt-0.5">${c.quote}</p>
+                <div class="flex gap-3 mt-1 text-[10px] text-slate-400 font-semibold">
+                    ${c.hp ? `<span>❤️ HP: ${c.hp}</span>` : ''}
+                    <span>⚔️ DMG: ${c.damage}</span>
+                    <span>🎯 ${c.type === 'spell' ? 'Anywhere' : c.targetType.toUpperCase()}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Difficulty Selector Buttons
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.diff-btn').forEach(b => {
+            b.className = 'diff-btn py-2 px-3 rounded-xl border border-slate-700 bg-slate-900 text-xs font-bold text-slate-300 hover:border-amber-500/50 transition';
+        });
+        btn.className = 'diff-btn py-2 px-3 rounded-xl border-2 border-amber-400 bg-amber-500/20 text-xs font-bold text-amber-200 shadow-lg transition';
+        state.difficulty = btn.dataset.diff;
+
+        const labels = { easy: '1st Year', normal: 'Auror', hard: 'Dark Lord' };
+        document.getElementById('difficulty-badge').textContent = labels[state.difficulty];
+    });
+});
+
+// Button Listeners
+document.getElementById('btn-start-match').addEventListener('click', startMatch);
+document.getElementById('btn-play-again').addEventListener('click', startMatch);
+document.getElementById('btn-restart-top').addEventListener('click', startMatch);
+
+document.getElementById('btn-sound').addEventListener('click', () => {
+    sfx.init();
+    const on = sfx.toggle();
+    document.getElementById('sound-icon').className = on ? 'fa-solid fa-volume-high text-sm' : 'fa-solid fa-volume-xmark text-sm text-slate-500';
+});
+
+document.getElementById('btn-deck-info').addEventListener('click', () => {
+    state.paused = true;
+    document.getElementById('guide-modal').classList.remove('hidden');
+});
+
+const closeGuide = () => {
+    state.paused = false;
+    document.getElementById('guide-modal').classList.add('hidden');
+};
+document.getElementById('btn-close-guide').addEventListener('click', closeGuide);
+document.getElementById('btn-resume-guide').addEventListener('click', closeGuide);
+
+// Main Animation Loop
+let lastFrameTime = performance.now();
+function gameLoop(now) {
+    const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
+    updateSimulation(dt);
+    renderArena();
+
+    requestAnimationFrame(gameLoop);
+}
+
+window.onload = function () {
+    populateStaticModals();
+    state.towers = createInitialTowers();
+    setupDecks();
+    renderHandUI();
+    resizeCanvas();
+    requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>
